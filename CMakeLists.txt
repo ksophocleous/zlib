@@ -1,18 +1,32 @@
-cmake_minimum_required(VERSION 2.4.4)
+cmake_minimum_required(VERSION 3.0)
 set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS ON)
 
-project(zlib C)
+project(zlib VERSION "1.2.8" LANGUAGES C)
 
-set(VERSION "1.2.8")
+include(CMakePackageConfigHelpers)
 
-option(ASM686 "Enable building i686 assembly implementation")
-option(AMD64 "Enable building amd64 assembly implementation")
+option(ZLIB_ASM686 "Enable building i686 assembly implementation")
+option(ZLIB_AMD64 "Enable building amd64 assembly implementation")
+option(ZLIB_USE_MSVC_STATIC_LINKING "Use static msvc runtime" OFF)
+option(ZLIB_BUILD_EXAMPLES "Enable building of examples" ON)
 
-set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Installation directory for executables")
-set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "Installation directory for libraries")
-set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
-set(INSTALL_MAN_DIR "${CMAKE_INSTALL_PREFIX}/share/man" CACHE PATH "Installation directory for manual pages")
-set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/share/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
+# statically link msvc runtime
+if(MSVC AND ZLIB_USE_MSVC_STATIC_LINKING)
+	foreach(flag_var
+		CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+		CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+
+		if(${flag_var} MATCHES "/MD")
+			string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+		endif(${flag_var} MATCHES "/MD")
+	endforeach(flag_var)
+endif()
+
+set(INSTALL_BIN_DIR "bin" CACHE PATH "Installation directory for executables")
+set(INSTALL_LIB_DIR "lib" CACHE PATH "Installation directory for libraries")
+set(INSTALL_INC_DIR "include" CACHE PATH "Installation directory for headers")
+set(INSTALL_MAN_DIR "share/man" CACHE PATH "Installation directory for manual pages")
+set(INSTALL_PKGCONFIG_DIR "share/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
 
 include(CheckTypeSize)
 include(CheckFunctionExists)
@@ -130,9 +144,9 @@ if(NOT MINGW)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCC)
-    if(ASM686)
+    if(ZLIB_ASM686)
         set(ZLIB_ASMS contrib/asm686/match.S)
-    elseif (AMD64)
+    elseif (ZLIB_AMD64)
         set(ZLIB_ASMS contrib/amd64/amd64-match.S)
     endif ()
 
@@ -143,13 +157,13 @@ if(CMAKE_COMPILER_IS_GNUCC)
 endif()
 
 if(MSVC)
-    if(ASM686)
+    if(ZLIB_ASM686)
 		ENABLE_LANGUAGE(ASM_MASM)
         set(ZLIB_ASMS
 			contrib/masmx86/inffas32.asm
 			contrib/masmx86/match686.asm
 		)
-    elseif (AMD64)
+    elseif (ZLIB_AMD64)
 		ENABLE_LANGUAGE(ASM_MASM)
         set(ZLIB_ASMS
 			contrib/masmx64/gvmat64.asm
@@ -212,6 +226,7 @@ endif()
 
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL )
     install(TARGETS zlib zlibstatic
+		EXPORT zlibConfig
         RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
         ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
         LIBRARY DESTINATION "${INSTALL_LIB_DIR}" )
@@ -226,24 +241,36 @@ if(NOT SKIP_INSTALL_FILES AND NOT SKIP_INSTALL_ALL )
     install(FILES ${ZLIB_PC} DESTINATION "${INSTALL_PKGCONFIG_DIR}")
 endif()
 
+write_basic_package_version_file("zlibConfigVersion.cmake" COMPATIBILITY SameMajorVersion)
+
+#configure_file("cmake/config.cmake.in" "zlibConfig.cmake" @ONLY)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/zlibConfigVersion.cmake"
+	DESTINATION "lib/cmake")
+
+install(EXPORT zlibConfig
+	NAMESPACE zlib::
+	DESTINATION lib/cmake)
+
 #============================================================================
 # Example binaries
 #============================================================================
+if(ZLIB_BUILD_EXAMPLES)
+	add_executable(example test/example.c)
+	target_link_libraries(example zlib)
+	add_test(example example)
 
-add_executable(example test/example.c)
-target_link_libraries(example zlib)
-add_test(example example)
+	add_executable(minigzip test/minigzip.c)
+	target_link_libraries(minigzip zlib)
 
-add_executable(minigzip test/minigzip.c)
-target_link_libraries(minigzip zlib)
+	if(HAVE_OFF64_T)
+	    add_executable(example64 test/example.c)
+	    target_link_libraries(example64 zlib)
+	    set_target_properties(example64 PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64")
+	    add_test(example64 example64)
 
-if(HAVE_OFF64_T)
-    add_executable(example64 test/example.c)
-    target_link_libraries(example64 zlib)
-    set_target_properties(example64 PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64")
-    add_test(example64 example64)
-
-    add_executable(minigzip64 test/minigzip.c)
-    target_link_libraries(minigzip64 zlib)
-    set_target_properties(minigzip64 PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64")
+	    add_executable(minigzip64 test/minigzip.c)
+	    target_link_libraries(minigzip64 zlib)
+	    set_target_properties(minigzip64 PROPERTIES COMPILE_FLAGS "-D_FILE_OFFSET_BITS=64")
+	endif()
 endif()
