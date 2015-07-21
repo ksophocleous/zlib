@@ -213,8 +213,10 @@ endif()
 
 if(BUILD_SHARED_LIBS)
 	add_library(zlib SHARED ${ZLIB_SRCS} ${ZLIB_ASMS} ${ZLIB_DLL_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
-	set_target_properties(zlib PROPERTIES DEFINE_SYMBOL ZLIB_DLL)
-	set_target_properties(zlib PROPERTIES SOVERSION 1)
+	set_target_properties(zlib PROPERTIES
+		INTERFACE_INCLUDE_DIRECTORIES "$<INSTALL_INTERFACE:include>;$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_BINARY_DIR}>"
+		DEFINE_SYMBOL ZLIB_DLL
+		SOVERSION 1)
 	if(NOT CYGWIN)
 	    # This property causes shared libraries on Linux to have the full version
 	    # encoded into their final filename.  We disable this on Cygwin because
@@ -246,6 +248,8 @@ endif()
 
 # static version
 add_library(${ZLIB_STATIC_NAME} STATIC ${ZLIB_SRCS} ${ZLIB_ASMS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS})
+set_target_properties(${ZLIB_STATIC_NAME} PROPERTIES
+	INTERFACE_INCLUDE_DIRECTORIES "$<INSTALL_INTERFACE:include>;$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_BINARY_DIR}>")
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     install(TARGETS ${ZLIB_STATIC_NAME}
 		EXPORT zlibConfig
@@ -274,7 +278,7 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/zlibConfigVersion.cmake"
 	DESTINATION "lib/cmake")
 
 install(EXPORT zlibConfig
-	NAMESPACE zlib::
+	# NAMESPACE zlib::
 	DESTINATION lib/cmake)
 
 #============================================================================
