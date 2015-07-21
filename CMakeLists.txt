@@ -7,12 +7,12 @@ include(CMakePackageConfigHelpers)
 
 option(ZLIB_ASM686 "Enable building i686 assembly implementation")
 option(ZLIB_AMD64 "Enable building amd64 assembly implementation")
-option(ZLIB_USE_MSVC_STATIC_LINKING "Use static msvc runtime" OFF)
+option(ZLIB_USE_STATIC_RUNTIME "Use static msvc runtime" OFF)
 option(ZLIB_BUILD_EXAMPLES "Enable building of examples" ON)
-option(ZLIB_STATIC_LIB_NAMED_ZLIB "Set the name of the static lib to zlib and disable shared linking" OFF)
+option(ZLIB_STATIC_LIB_FOR_OPENSSL "Set the name of the static lib to zlib1 and disable shared linking (use for openssl)" OFF)
 
 # statically link msvc runtime
-if(MSVC AND ZLIB_USE_MSVC_STATIC_LINKING)
+if(MSVC AND ZLIB_USE_STATIC_RUNTIME)
 	foreach(flag_var
 		CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
 		CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
@@ -198,8 +198,8 @@ if(MINGW)
     set(ZLIB_DLL_SRCS ${CMAKE_CURRENT_BINARY_DIR}/zlib1rc.obj)
 endif(MINGW)
 
-if(ZLIB_STATIC_LIB_NAMED_ZLIB)
-	set(ZLIB_STATIC_NAME "zlib")
+if(ZLIB_STATIC_LIB_FOR_OPENSSL)
+	set(ZLIB_STATIC_NAME "zlib1")
 	set(BUILD_SHARED_LIBS OFF)
 else()
 	set(ZLIB_STATIC_NAME "zlib_static")
